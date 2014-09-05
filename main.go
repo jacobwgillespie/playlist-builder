@@ -63,7 +63,7 @@ func main() {
 	if err != nil {
 		log.Panicf("ERROR: %v\n", err)
 	}
-	DB.LogMode(true)
+	//DB.LogMode(true)
 	pool = newRedisPool(Config.RedisServer, Config.RedisPassword)
 
 	router.Handle("/api/build", requestHandler(handleApiBuild))

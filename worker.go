@@ -22,9 +22,8 @@ func processTrack(conn redis.Conn, job BuildArguments, title, artist string) {
 		Joins("inner join artist_track_roles on artist_track_roles.track_id=tracks.id inner join artists on artist_track_roles.artist_id=artists.id").
 		Where("tracks.title = ? and artists.name = ?", title, artist).Scan(&track)
 
-	fmt.Println(track)
-
 	if track.Id != 0 {
+		fmt.Printf("Adding track ID %d\n", track.Id)
 		_, _ = conn.Do("SADD", "plan:"+job.Key(), track.Id)
 	}
 }
