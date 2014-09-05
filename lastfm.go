@@ -66,7 +66,8 @@ func artistGetSimilar(name string) []string {
 func tagTopTracks(name string) []basicTrack {
 	result := cacheWith("tagTopTracks:"+name, func() interface{} {
 		r, err := api.Tag.GetTopTracks(lastfm.P{
-			"tag": name,
+			"tag":   name,
+			"limit": "1000",
 		})
 		if err != nil {
 			return nil

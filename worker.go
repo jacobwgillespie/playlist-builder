@@ -107,9 +107,5 @@ func handleGenreJob(conn redis.Conn, job BuildArguments) {
 	similars := tagTopTracks(job.InternalId)
 	for _, s := range similars {
 		processTrack(conn, job, s.Title, s.Artist)
-		songs := trackGetSimilar(s.Title, s.Artist)
-		for _, t := range songs {
-			processTrack(conn, job, t.Title, t.Artist)
-		}
 	}
 }
