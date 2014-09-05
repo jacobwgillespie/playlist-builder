@@ -50,7 +50,7 @@ func main() {
 
 	// Build the workers
 	wg := new(sync.WaitGroup)
-	for w := 1; w <= 50; w++ {
+	for w := 1; w <= 20; w++ {
 		wg.Add(1)
 		go worker(w, buildJobs, wg)
 	}
