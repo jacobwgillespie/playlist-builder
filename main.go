@@ -38,6 +38,12 @@ func main() {
 	if dsn := os.Getenv("DSN"); dsn != "" {
 		Config.Dsn = dsn
 	}
+	if redisServer := os.Getenv("REDIS_SERVER"); redisServer != "" {
+		Config.RedisServer = redisServer
+	}
+	if redisPassword := os.Getenv("REDIS_PASSWORD"); redisPassword != "" {
+		Config.RedisPassword = redisPassword
+	}
 	if lastfmKey := os.Getenv("LASTFM_API_KEY"); lastfmKey != "" {
 		Config.LastFMAPIKey = lastfmKey
 	}
