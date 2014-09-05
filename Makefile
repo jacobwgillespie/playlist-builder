@@ -19,4 +19,4 @@ loc:
 	@rm tmp-loc.zip
 
 godep-save:
-	godep save -copy=false
+	godep save

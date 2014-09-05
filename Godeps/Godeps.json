@@ -1,16 +1,10 @@
 {
-	"ImportPath": "github.com/playlist-media/playlist-api",
+	"ImportPath": "github.com/playlist-media/bucket-builder",
 	"GoVersion": "go1.3",
 	"Deps": [
 		{
-			"ImportPath": "code.google.com/p/go.crypto/bcrypt",
-			"Comment": "null-213",
-			"Rev": "aa2644fe4aa50e3b38d75187b4799b1f0c9ddcef"
-		},
-		{
-			"ImportPath": "code.google.com/p/go.crypto/blowfish",
-			"Comment": "null-213",
-			"Rev": "aa2644fe4aa50e3b38d75187b4799b1f0c9ddcef"
+			"ImportPath": "github.com/garyburd/redigo/redis",
+			"Rev": "6628c86d6a89ce7983c7c9b5e98c1df795fbd256"
 		},
 		{
 			"ImportPath": "github.com/go-sql-driver/mysql",
@@ -38,12 +32,8 @@
 			"Rev": "3e0659e626f761e9af7a8bd1c8b6aaea6770495b"
 		},
 		{
-			"ImportPath": "github.com/playlist-media/authtoken",
-			"Rev": "b3aa8826e34c50cafba9ecba19361bd18ae23f61"
-		},
-		{
-			"ImportPath": "github.com/playlist-media/mngo",
-			"Rev": "a3c5a43e53c041d62f7edd8e607d8cae7459d59f"
+			"ImportPath": "github.com/shkh/lastfm-go/lastfm",
+			"Rev": "0a72ce30b6e63d03fe5f132facec61eecd9fd8e7"
 		}
 	]
 }
