@@ -1,1 +1,1 @@
-web: make serve-api
+web: bucket-builder
