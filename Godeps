@@ -1,0 +1,49 @@
+{
+	"ImportPath": "github.com/playlist-media/playlist-api",
+	"GoVersion": "go1.3",
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/go.crypto/bcrypt",
+			"Comment": "null-213",
+			"Rev": "aa2644fe4aa50e3b38d75187b4799b1f0c9ddcef"
+		},
+		{
+			"ImportPath": "code.google.com/p/go.crypto/blowfish",
+			"Comment": "null-213",
+			"Rev": "aa2644fe4aa50e3b38d75187b4799b1f0c9ddcef"
+		},
+		{
+			"ImportPath": "github.com/go-sql-driver/mysql",
+			"Comment": "v1.2-1-g7094cf0",
+			"Rev": "7094cf0331ed6bde3cd75aa5d1da0e7764b526c9"
+		},
+		{
+			"ImportPath": "github.com/gorilla/context",
+			"Rev": "14f550f51af52180c2eefed15e5fd18d63c0a64a"
+		},
+		{
+			"ImportPath": "github.com/gorilla/mux",
+			"Rev": "14cafe28513321476c73967a5a4f3454b6129c46"
+		},
+		{
+			"ImportPath": "github.com/gorilla/schema",
+			"Rev": "ed309eb6f98f0d1e7f0b72e9fb1bca82999ca1b0"
+		},
+		{
+			"ImportPath": "github.com/jinzhu/gorm",
+			"Rev": "df4a00a945aa2dfb1de210fafec6da4dc02a496d"
+		},
+		{
+			"ImportPath": "github.com/lib/pq/hstore",
+			"Rev": "3e0659e626f761e9af7a8bd1c8b6aaea6770495b"
+		},
+		{
+			"ImportPath": "github.com/playlist-media/authtoken",
+			"Rev": "b3aa8826e34c50cafba9ecba19361bd18ae23f61"
+		},
+		{
+			"ImportPath": "github.com/playlist-media/mngo",
+			"Rev": "a3c5a43e53c041d62f7edd8e607d8cae7459d59f"
+		}
+	]
+}
