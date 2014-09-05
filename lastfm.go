@@ -21,14 +21,18 @@ func cacheWith(key string, provider anonFunc) interface{} {
 
 func artistTopTracks(name string) []basicTrack {
 	result := cacheWith("artistTopTracks:"+name, func() interface{} {
+		var results []basicTrack
+
 		r, err := api.Artist.GetTopTracks(lastfm.P{
 			"artist": name,
 		})
 		if err != nil {
-			return nil
+			return results
 		}
 
-		results := make([]basicTrack, 0)
+		if r.Tracks == nil {
+			return results
+		}
 
 		for _, m := range r.Tracks {
 
@@ -45,14 +49,18 @@ func artistTopTracks(name string) []basicTrack {
 
 func artistGetSimilar(name string) []string {
 	result := cacheWith("artistGetSimilar:"+name, func() interface{} {
+		results := make([]string, 0)
+
 		r, err := api.Artist.GetSimilar(lastfm.P{
 			"artist": name,
 		})
 		if err != nil {
-			return nil
+			return results
 		}
 
-		results := make([]string, 0)
+		if r.Similars == nil {
+			return results
+		}
 
 		for _, m := range r.Similars {
 			results = append(results, m.Name)
@@ -65,15 +73,19 @@ func artistGetSimilar(name string) []string {
 
 func tagTopTracks(name string) []basicTrack {
 	result := cacheWith("tagTopTracks:"+name, func() interface{} {
+		var results []basicTrack
+
 		r, err := api.Tag.GetTopTracks(lastfm.P{
 			"tag":   name,
 			"limit": "1000",
 		})
 		if err != nil {
-			return nil
+			return results
 		}
 
-		results := make([]basicTrack, 0)
+		if r.Tracks == nil {
+			return results
+		}
 
 		for _, m := range r.Tracks {
 			results = append(results, basicTrack{
@@ -89,15 +101,19 @@ func tagTopTracks(name string) []basicTrack {
 
 func trackGetSimilar(title, artist string) []basicTrack {
 	result := cacheWith("trackGetSimilar:"+title+":"+artist, func() interface{} {
+		var results []basicTrack
+
 		r, err := api.Track.GetSimilar(lastfm.P{
 			"track":  title,
 			"artist": artist,
 		})
 		if err != nil {
-			return nil
+			return results
 		}
 
-		results := make([]basicTrack, 0)
+		if r.Tracks == nil {
+			return results
+		}
 
 		for _, m := range r.Tracks {
 			results = append(results, basicTrack{
