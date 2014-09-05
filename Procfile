@@ -1,1 +1,1 @@
-api: make serve-api
+web: make serve-api
