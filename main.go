@@ -66,6 +66,15 @@ func main() {
 	//DB.LogMode(true)
 	pool = newRedisPool(Config.RedisServer, Config.RedisPassword)
 
+	conn := pool.Get()
+	defer conn.Close()
+	r, err := conn.Do("KEYS", "lock:*")
+	if err == nil {
+		for _, k := range r.([]interface{}) {
+			_, _ = conn.Do("DEL", k.([]byte))
+		}
+	}
+
 	router.Handle("/api/build", requestHandler(handleApiBuild))
 	// Build the middleware chain
 	chain := methodOverrideMiddleware(corsMiddleware(router))
