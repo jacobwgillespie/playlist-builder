@@ -1,6 +1,6 @@
 package main
 
-import "github.com/shkh/lastfm-go/lastfm"
+import "github.com/playlist-media/lastfm-go/lastfm"
 
 type basicTrack struct {
 	Title  string

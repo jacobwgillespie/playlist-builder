@@ -32,8 +32,8 @@
 			"Rev": "3e0659e626f761e9af7a8bd1c8b6aaea6770495b"
 		},
 		{
-			"ImportPath": "github.com/shkh/lastfm-go/lastfm",
-			"Rev": "0a72ce30b6e63d03fe5f132facec61eecd9fd8e7"
+			"ImportPath": "github.com/playlist-media/lastfm-go/lastfm",
+			"Rev": "d82909b74322700b19577bf0d5a821d83a0f3532"
 		}
 	]
 }

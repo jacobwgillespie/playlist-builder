@@ -12,7 +12,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
-	"github.com/shkh/lastfm-go/lastfm"
+	"github.com/playlist-media/lastfm-go/lastfm"
 )
 
 var router = mux.NewRouter()
