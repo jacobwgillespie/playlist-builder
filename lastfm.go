@@ -25,7 +25,7 @@ func artistTopTracks(name string) []basicTrack {
 
 		r, err := api.Artist.GetTopTracks(lastfm.P{
 			"artist": name,
-			"limit":  "30",
+			"limit":  "20",
 		})
 		if err != nil {
 			return results
