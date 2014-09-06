@@ -25,6 +25,7 @@ func artistTopTracks(name string) []basicTrack {
 
 		r, err := api.Artist.GetTopTracks(lastfm.P{
 			"artist": name,
+			"limit":  "30",
 		})
 		if err != nil {
 			return results
@@ -53,6 +54,7 @@ func artistGetSimilar(name string) []string {
 
 		r, err := api.Artist.GetSimilar(lastfm.P{
 			"artist": name,
+			"limit":  "30",
 		})
 		if err != nil {
 			return results
@@ -106,6 +108,7 @@ func trackGetSimilar(title, artist string) []basicTrack {
 		r, err := api.Track.GetSimilar(lastfm.P{
 			"track":  title,
 			"artist": artist,
+			"limit":  30,
 		})
 		if err != nil {
 			return results

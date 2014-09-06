@@ -11,7 +11,7 @@ func worker(id int, jobs chan BuildArguments, wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("goroutine paniced:", r)
+			fmt.Println("goroutine panicked:", r)
 		}
 	}()
 
