@@ -6,6 +6,9 @@ type configStruct struct {
 	RedisServer   string
 	RedisPassword string
 	LastFMAPIKey  string
+	LibratoUser   string
+	LibratoKey    string
+	LibratoSource string
 }
 
 var Config configStruct

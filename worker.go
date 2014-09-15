@@ -5,7 +5,11 @@ import (
 	"sync"
 
 	"github.com/garyburd/redigo/redis"
+	"github.com/rcrowley/go-metrics"
 )
+
+var processTrackTimer = metrics.NewTimer()
+var planBuildTimer = metrics.NewTimer()
 
 func worker(id int, jobs chan BuildArguments, wg *sync.WaitGroup) {
 	defer wg.Done()
@@ -21,46 +25,50 @@ func worker(id int, jobs chan BuildArguments, wg *sync.WaitGroup) {
 }
 
 func processTrack(conn redis.Conn, job BuildArguments, title, artist string) {
-	var track Track
-	DB.Table("tracks").
-		Select("tracks.id, tracks.title").
-		Joins("inner join artist_track_roles on artist_track_roles.track_id=tracks.id inner join artists on artist_track_roles.artist_id=artists.id").
-		Where("tracks.title = ? and artists.name = ?", title, artist).Scan(&track)
+	processTrackTimer.Time(func() {
+		var track Track
+		DB.Table("tracks").
+			Select("tracks.id, tracks.title").
+			Joins("inner join artist_track_roles on artist_track_roles.track_id=tracks.id inner join artists on artist_track_roles.artist_id=artists.id").
+			Where("tracks.title = ? and artists.name = ?", title, artist).Scan(&track)
 
-	if track.Id != 0 {
-		fmt.Printf("Adding track ID %d\n", track.Id)
-		_, _ = conn.Do("SADD", "plan:"+job.Key(), track.Id)
-	}
+		if track.Id != 0 {
+			fmt.Printf("Adding track ID %d\n", track.Id)
+			_, _ = conn.Do("SADD", "plan:"+job.Key(), track.Id)
+		}
+	})
 }
 
 func handleJob(workerId int, job BuildArguments) {
 	conn := pool.Get()
 	defer conn.Close()
 
-	fmt.Printf("Worker %d: building job (%s, %s)\n", workerId, job.SeedType, job.InternalId)
+	planBuildTimer.Time(func() {
+		fmt.Printf("Worker %d: building job (%s, %s)\n", workerId, job.SeedType, job.InternalId)
 
-	r, err := conn.Do("SETNX", "lock:"+job.Key(), "1")
-	if err != nil {
-		return
-	}
+		r, err := conn.Do("SETNX", "lock:"+job.Key(), "1")
+		if err != nil {
+			return
+		}
 
-	if r != int64(1) {
-		fmt.Printf("Worker %d: exiting - already queued\n", workerId)
-		return
-	}
+		if r != int64(1) {
+			fmt.Printf("Worker %d: exiting - already queued\n", workerId)
+			return
+		}
 
-	// Expire the key in 1 hour
-	_, err = conn.Do("EXPIRE", "lock:"+job.Key(), "3600")
-	defer conn.Do("DEL", "lock:"+job.Key())
+		// Expire the key in 1 hour
+		_, err = conn.Do("EXPIRE", "lock:"+job.Key(), "3600")
+		defer conn.Do("DEL", "lock:"+job.Key())
 
-	switch job.SeedType {
-	case "artist":
-		handleArtistJob(conn, job)
-	case "track":
-		handleTrackJob(conn, job)
-	case "genre":
-		handleGenreJob(conn, job)
-	}
+		switch job.SeedType {
+		case "artist":
+			handleArtistJob(conn, job)
+		case "track":
+			handleTrackJob(conn, job)
+		case "genre":
+			handleGenreJob(conn, job)
+		}
+	})
 }
 
 func handleArtistJob(conn redis.Conn, job BuildArguments) {

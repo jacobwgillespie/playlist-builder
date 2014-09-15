@@ -7,12 +7,15 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/garyburd/redigo/redis"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	"github.com/playlist-media/lastfm-go/lastfm"
+	"github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics/librato"
 )
 
 var router = mux.NewRouter()
@@ -29,6 +32,9 @@ func main() {
 	flag.StringVar(&Config.RedisServer, "redisServer", ":6379", "")
 	flag.StringVar(&Config.RedisPassword, "redisPassword", "", "")
 	flag.StringVar(&Config.LastFMAPIKey, "lastfmApiKey", "", "Last.FM API key")
+	flag.StringVar(&Config.LibratoUser, "libratoUser", "", "Email address for Librato")
+	flag.StringVar(&Config.LibratoKey, "libratoKey", "", "")
+	flag.StringVar(&Config.LibratoSource, "libratoSource", "builder", "")
 	flag.Parse()
 
 	// Read config from ENV
@@ -46,6 +52,15 @@ func main() {
 	}
 	if lastfmKey := os.Getenv("LASTFM_API_KEY"); lastfmKey != "" {
 		Config.LastFMAPIKey = lastfmKey
+	}
+	if libratoUser := os.Getenv("LIBRATO_USER"); libratoUser != "" {
+		Config.LibratoUser = libratoUser
+	}
+	if libratoKey := os.Getenv("LIBRATO_KEY"); libratoKey != "" {
+		Config.LibratoKey = libratoKey
+	}
+	if libratoSource := os.Getenv("LIBRATO_SOURCE"); libratoSource != "" {
+		Config.LibratoSource = libratoSource
 	}
 
 	// Build the workers
@@ -75,8 +90,23 @@ func main() {
 		}
 	}
 
+	// Register the metrics
+	metrics.Register("builder.process_track", processTrackTimer)
+	metrics.Register("builder.plan_build", planBuildTimer)
+
+	// Log the metrics
+	//go metrics.Log(metrics.DefaultRegistry, 10e9, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
+	go librato.Librato(metrics.DefaultRegistry,
+		10e9,                 // interval
+		Config.LibratoUser,   // account owner email address
+		Config.LibratoKey,    // Librato API token
+		Config.LibratoSource, // source
+		[]float64{0.95},      // precentiles to send
+		time.Millisecond,     // time unit
+	)
+
+	// Set up the URL
 	router.Handle("/api/build", requestHandler(handleApiBuild))
-	// Build the middleware chain
 	chain := methodOverrideMiddleware(corsMiddleware(router))
 
 	// Start the server
