@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/playlist-media/bucket-builder",
-	"GoVersion": "go1.3",
+	"GoVersion": "go1.3.1",
 	"Deps": [
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
@@ -34,6 +34,10 @@
 		{
 			"ImportPath": "github.com/playlist-media/lastfm-go/lastfm",
 			"Rev": "d82909b74322700b19577bf0d5a821d83a0f3532"
+		},
+		{
+			"ImportPath": "github.com/rcrowley/go-metrics",
+			"Rev": "dc42d45218778850334afa8c0758e3e00ebf6f22"
 		}
 	]
 }
