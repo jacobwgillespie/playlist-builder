@@ -7,7 +7,7 @@ type configStruct struct {
 	RedisPassword string
 	LastFMAPIKey  string
 	LibratoUser   string
-	LibratoKey    string
+	LibratoToken  string
 	LibratoSource string
 }
 

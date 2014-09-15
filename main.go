@@ -33,7 +33,7 @@ func main() {
 	flag.StringVar(&Config.RedisPassword, "redisPassword", "", "")
 	flag.StringVar(&Config.LastFMAPIKey, "lastfmApiKey", "", "Last.FM API key")
 	flag.StringVar(&Config.LibratoUser, "libratoUser", "", "Email address for Librato")
-	flag.StringVar(&Config.LibratoKey, "libratoKey", "", "")
+	flag.StringVar(&Config.LibratoToken, "libratoToken", "", "")
 	flag.StringVar(&Config.LibratoSource, "libratoSource", "builder", "")
 	flag.Parse()
 
@@ -56,8 +56,8 @@ func main() {
 	if libratoUser := os.Getenv("LIBRATO_USER"); libratoUser != "" {
 		Config.LibratoUser = libratoUser
 	}
-	if libratoKey := os.Getenv("LIBRATO_KEY"); libratoKey != "" {
-		Config.LibratoKey = libratoKey
+	if libratoToken := os.Getenv("LIBRATO_TOKEN"); libratoToken != "" {
+		Config.LibratoToken = libratoToken
 	}
 	if libratoSource := os.Getenv("LIBRATO_SOURCE"); libratoSource != "" {
 		Config.LibratoSource = libratoSource
@@ -99,7 +99,7 @@ func main() {
 	go librato.Librato(metrics.DefaultRegistry,
 		10e9,                 // interval
 		Config.LibratoUser,   // account owner email address
-		Config.LibratoKey,    // Librato API token
+		Config.LibratoToken,  // Librato API token
 		Config.LibratoSource, // source
 		[]float64{0.95},      // precentiles to send
 		time.Millisecond,     // time unit
