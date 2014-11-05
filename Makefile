@@ -20,3 +20,6 @@ loc:
 
 godep-save:
 	godep save
+
+build-docker:
+	docker build -t playlist/playlist-builder .
