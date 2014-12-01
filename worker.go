@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/rcrowley/go-metrics"
+	metrics "github.com/rcrowley/go-metrics"
 )
 
 var processTrackTimer = metrics.NewTimer()
@@ -33,7 +33,7 @@ func processTrack(conn redis.Conn, job BuildArguments, title, artist string) {
 			Where("tracks.title = ? and artists.name = ?", title, artist).Scan(&track)
 
 		if track.Id != 0 {
-			fmt.Printf("Adding track ID %d\n", track.Id)
+			//fmt.Printf("Adding track ID %d\n", track.Id)
 			_, _ = conn.Do("SADD", "plan:"+job.Key(), track.Id)
 		}
 	})
@@ -44,7 +44,7 @@ func handleJob(workerId int, job BuildArguments) {
 	defer conn.Close()
 
 	planBuildTimer.Time(func() {
-		fmt.Printf("Worker %d: building job (%s, %s)\n", workerId, job.SeedType, job.InternalId)
+		//fmt.Printf("Worker %d: building job (%s, %s)\n", workerId, job.SeedType, job.InternalId)
 
 		r, err := conn.Do("SETNX", "lock:"+job.Key(), "1")
 		if err != nil {
@@ -52,7 +52,7 @@ func handleJob(workerId int, job BuildArguments) {
 		}
 
 		if r != int64(1) {
-			fmt.Printf("Worker %d: exiting - already queued\n", workerId)
+			//fmt.Printf("Worker %d: exiting - already queued\n", workerId)
 			return
 		}
 
