@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 // NewDecoder returns a new Decoder.
@@ -22,7 +23,7 @@ type Decoder struct {
 	ignoreUnknownKeys bool
 }
 
-// SetAliasTag changes the tag used to locate custome field aliases.
+// SetAliasTag changes the tag used to locate custom field aliases.
 // The default tag is "schema".
 func (d *Decoder) SetAliasTag(tag string) {
 	d.cache.tag = tag
@@ -54,7 +55,7 @@ func (d *Decoder) IgnoreUnknownKeys(i bool) {
 
 // RegisterConverter registers a converter function for a custom type.
 func (d *Decoder) RegisterConverter(value interface{}, converterFunc Converter) {
-	d.cache.conv[reflect.TypeOf(value)] = converterFunc
+	d.cache.regconv[reflect.TypeOf(value)] = converterFunc
 }
 
 // Decode decodes a map[string][]string to a struct.
@@ -139,7 +140,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 		if isPtrElem {
 			elemT = elemT.Elem()
 		}
-		conv := d.cache.conv[elemT]
+		conv := d.cache.converter(elemT)
 		if conv == nil {
 			return fmt.Errorf("schema: converter not found for %v", elemT)
 		}
@@ -156,24 +157,45 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 				}
 				items = append(items, item)
 			} else {
-				// If a single value is invalid should we give up
-				// or set a zero value?
-				return ConversionError{path, key}
+				if strings.Contains(value, ",") {
+					values := strings.Split(value, ",")
+					for _, value := range values {
+						if value == "" {
+							if d.zeroEmpty {
+								items = append(items, reflect.Zero(elemT))
+							}
+						} else if item := conv(value); item.IsValid() {
+							if isPtrElem {
+								ptr := reflect.New(elemT)
+								ptr.Elem().Set(item)
+								item = ptr
+							}
+							items = append(items, item)
+						} else {
+							return ConversionError{path, key}
+						}
+					}
+				} else {
+					return ConversionError{path, key}
+				}
 			}
 		}
 		value := reflect.Append(reflect.MakeSlice(t, 0, 0), items...)
 		v.Set(value)
 	} else {
-		// Use the last value provided
-		val := values[len(values)-1]
+		val := ""
+		// Use the last value provided if any values were provided
+		if len(values) > 0 {
+			val = values[len(values)-1]
+		}
 
 		if val == "" {
 			if d.zeroEmpty {
 				v.Set(reflect.Zero(t))
 			}
-		} else if conv := d.cache.conv[t]; conv != nil {
+		} else if conv := d.cache.converter(t); conv != nil {
 			if value := conv(val); value.IsValid() {
-				v.Set(value)
+				v.Set(value.Convert(t))
 			} else {
 				return ConversionError{path, -1}
 			}

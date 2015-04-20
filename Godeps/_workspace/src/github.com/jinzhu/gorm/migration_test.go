@@ -7,87 +7,79 @@ import (
 )
 
 func runMigration() {
-	if err := db.DropTable(&User{}).Error; err != nil {
+	if err := DB.DropTableIfExists(&User{}).Error; err != nil {
 		fmt.Printf("Got error when try to delete table users, %+v\n", err)
 	}
 
-	db.Exec("drop table products;")
-	db.Exec("drop table emails;")
-	db.Exec("drop table addresses")
-	db.Exec("drop table credit_cards")
-	db.Exec("drop table roles")
-	db.Exec("drop table companies")
-	db.Exec("drop table animals")
-	db.Exec("drop table user_languages")
-	db.Exec("drop table languages")
-
-	if err := db.CreateTable(&Animal{}).Error; err != nil {
-		panic(fmt.Sprintf("No error should happen when create table, but got %+v", err))
+	for _, table := range []string{"animals", "user_languages"} {
+		DB.Exec(fmt.Sprintf("drop table %v;", table))
 	}
 
-	if err := db.CreateTable(&User{}).Error; err != nil {
-		panic(fmt.Sprintf("No error should happen when create table, but got %+v", err))
+	values := []interface{}{&Product{}, &Email{}, &Address{}, &CreditCard{}, &Company{}, &Role{}, &Language{}, &HNPost{}, &EngadgetPost{}, &Animal{}, &User{}, &JoinTable{}}
+	for _, value := range values {
+		DB.DropTable(value)
 	}
 
-	if err := db.CreateTable(&Product{}).Error; err != nil {
-		panic(fmt.Sprintf("No error should happen when create table, but got %+v", err))
-	}
-
-	if err := db.CreateTable(Email{}).Error; err != nil {
-		panic(fmt.Sprintf("No error should happen when create table, but got %+v", err))
-	}
-
-	if err := db.AutoMigrate(Address{}).Error; err != nil {
-		panic(fmt.Sprintf("No error should happen when create table, but got %+v", err))
-	}
-
-	if err := db.AutoMigrate(&CreditCard{}).Error; err != nil {
-		panic(fmt.Sprintf("No error should happen when create table, but got %+v", err))
-	}
-
-	if err := db.AutoMigrate(Company{}).Error; err != nil {
-		panic(fmt.Sprintf("No error should happen when create table, but got %+v", err))
-	}
-
-	if err := db.AutoMigrate(Role{}).Error; err != nil {
-		panic(fmt.Sprintf("No error should happen when create table, but got %+v", err))
-	}
-
-	if err := db.AutoMigrate(Language{}).Error; err != nil {
+	if err := DB.AutoMigrate(values...).Error; err != nil {
 		panic(fmt.Sprintf("No error should happen when create table, but got %+v", err))
 	}
 }
 
 func TestIndexes(t *testing.T) {
-	if err := db.Model(&Email{}).AddIndex("idx_email_email", "email").Error; err != nil {
+	if err := DB.Model(&Email{}).AddIndex("idx_email_email", "email").Error; err != nil {
 		t.Errorf("Got error when tried to create index: %+v", err)
 	}
 
-	if err := db.Model(&Email{}).RemoveIndex("idx_email_email").Error; err != nil {
+	scope := DB.NewScope(&Email{})
+	if !scope.Dialect().HasIndex(scope, scope.TableName(), "idx_email_email") {
+		t.Errorf("Email should have index idx_email_email")
+	}
+
+	if err := DB.Model(&Email{}).RemoveIndex("idx_email_email").Error; err != nil {
 		t.Errorf("Got error when tried to remove index: %+v", err)
 	}
 
-	if err := db.Model(&Email{}).AddIndex("idx_email_email_and_user_id", "user_id", "email").Error; err != nil {
+	if scope.Dialect().HasIndex(scope, scope.TableName(), "idx_email_email") {
+		t.Errorf("Email's index idx_email_email should be deleted")
+	}
+
+	if err := DB.Model(&Email{}).AddIndex("idx_email_email_and_user_id", "user_id", "email").Error; err != nil {
 		t.Errorf("Got error when tried to create index: %+v", err)
 	}
 
-	if err := db.Model(&Email{}).RemoveIndex("idx_email_email_and_user_id").Error; err != nil {
+	if !scope.Dialect().HasIndex(scope, scope.TableName(), "idx_email_email_and_user_id") {
+		t.Errorf("Email should have index idx_email_email_and_user_id")
+	}
+
+	if err := DB.Model(&Email{}).RemoveIndex("idx_email_email_and_user_id").Error; err != nil {
 		t.Errorf("Got error when tried to remove index: %+v", err)
 	}
 
-	if err := db.Model(&Email{}).AddUniqueIndex("idx_email_email_and_user_id", "user_id", "email").Error; err != nil {
+	if scope.Dialect().HasIndex(scope, scope.TableName(), "idx_email_email_and_user_id") {
+		t.Errorf("Email's index idx_email_email_and_user_id should be deleted")
+	}
+
+	if err := DB.Model(&Email{}).AddUniqueIndex("idx_email_email_and_user_id", "user_id", "email").Error; err != nil {
 		t.Errorf("Got error when tried to create index: %+v", err)
 	}
 
-	if db.Save(&User{Name: "unique_indexes", Emails: []Email{{Email: "user1@example.comiii"}, {Email: "user1@example.com"}, {Email: "user1@example.com"}}}).Error == nil {
+	if !scope.Dialect().HasIndex(scope, scope.TableName(), "idx_email_email_and_user_id") {
+		t.Errorf("Email should have index idx_email_email_and_user_id")
+	}
+
+	if DB.Save(&User{Name: "unique_indexes", Emails: []Email{{Email: "user1@example.comiii"}, {Email: "user1@example.com"}, {Email: "user1@example.com"}}}).Error == nil {
 		t.Errorf("Should get to create duplicate record when having unique index")
 	}
 
-	if err := db.Model(&Email{}).RemoveIndex("idx_email_email_and_user_id").Error; err != nil {
+	if err := DB.Model(&Email{}).RemoveIndex("idx_email_email_and_user_id").Error; err != nil {
 		t.Errorf("Got error when tried to remove index: %+v", err)
 	}
 
-	if db.Save(&User{Name: "unique_indexes", Emails: []Email{{Email: "user1@example.com"}, {Email: "user1@example.com"}}}).Error != nil {
+	if scope.Dialect().HasIndex(scope, scope.TableName(), "idx_email_email_and_user_id") {
+		t.Errorf("Email's index idx_email_email_and_user_id should be deleted")
+	}
+
+	if DB.Save(&User{Name: "unique_indexes", Emails: []Email{{Email: "user1@example.com"}, {Email: "user1@example.com"}}}).Error != nil {
 		t.Errorf("Should be able to create duplicated emails after remove unique index")
 	}
 }
@@ -95,9 +87,9 @@ func TestIndexes(t *testing.T) {
 type BigEmail struct {
 	Id           int64
 	UserId       int64
-	Email        string
-	UserAgent    string
-	RegisteredAt time.Time
+	Email        string    `sql:"index:idx_email_agent"`
+	UserAgent    string    `sql:"index:idx_email_agent"`
+	RegisteredAt time.Time `sql:"unique_index"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
@@ -107,15 +99,24 @@ func (b BigEmail) TableName() string {
 }
 
 func TestAutoMigration(t *testing.T) {
-	db.AutoMigrate(Address{})
-	if err := db.Table("emails").AutoMigrate(BigEmail{}).Error; err != nil {
+	DB.AutoMigrate(&Address{})
+	if err := DB.Table("emails").AutoMigrate(&BigEmail{}).Error; err != nil {
 		t.Errorf("Auto Migrate should not raise any error")
 	}
 
-	db.Save(&BigEmail{Email: "jinzhu@example.org", UserAgent: "pc", RegisteredAt: time.Now()})
+	DB.Save(&BigEmail{Email: "jinzhu@example.org", UserAgent: "pc", RegisteredAt: time.Now()})
+
+	scope := DB.NewScope(&BigEmail{})
+	if !scope.Dialect().HasIndex(scope, scope.TableName(), "idx_email_agent") {
+		t.Errorf("Failed to create index")
+	}
+
+	if !scope.Dialect().HasIndex(scope, scope.TableName(), "uix_emails_registered_at") {
+		t.Errorf("Failed to create index")
+	}
 
 	var bigemail BigEmail
-	db.First(&bigemail, "user_agent = ?", "pc")
+	DB.First(&bigemail, "user_agent = ?", "pc")
 	if bigemail.Email != "jinzhu@example.org" || bigemail.UserAgent != "pc" || bigemail.RegisteredAt.IsZero() {
 		t.Error("Big Emails should be saved and fetched correctly")
 	}

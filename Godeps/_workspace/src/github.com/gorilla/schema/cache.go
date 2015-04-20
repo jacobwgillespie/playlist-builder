@@ -17,9 +17,10 @@ var invalidPath = errors.New("schema: invalid path")
 // newCache returns a new cache.
 func newCache() *cache {
 	c := cache{
-		m:    make(map[reflect.Type]*structInfo),
-		conv: make(map[reflect.Type]Converter),
-		tag:  "schema",
+		m:       make(map[reflect.Type]*structInfo),
+		conv:    make(map[reflect.Kind]Converter),
+		regconv: make(map[reflect.Type]Converter),
+		tag:     "schema",
 	}
 	for k, v := range converters {
 		c.conv[k] = v
@@ -29,10 +30,11 @@ func newCache() *cache {
 
 // cache caches meta-data about a struct.
 type cache struct {
-	l    sync.RWMutex
-	m    map[reflect.Type]*structInfo
-	conv map[reflect.Type]Converter
-	tag  string
+	l       sync.RWMutex
+	m       map[reflect.Type]*structInfo
+	conv    map[reflect.Kind]Converter
+	regconv map[reflect.Type]Converter
+	tag     string
 }
 
 // parsePath parses a path in dotted notation verifying that it is a valid
@@ -50,6 +52,9 @@ func (c *cache) parsePath(p string, t reflect.Type) ([]pathPart, error) {
 	path := make([]string, 0)
 	keys := strings.Split(p, ".")
 	for i := 0; i < len(keys); i++ {
+		if t.Kind() != reflect.Struct {
+			return nil, invalidPath
+		}
 		if struc = c.get(t); struc == nil {
 			return nil, invalidPath
 		}
@@ -87,10 +92,10 @@ func (c *cache) parsePath(p string, t reflect.Type) ([]pathPart, error) {
 					t = t.Elem()
 				}
 			}
-		} else if field.typ.Kind() == reflect.Struct {
-			t = field.typ
-		} else if field.typ.Kind() == reflect.Ptr && field.typ.Elem().Kind() == reflect.Struct {
+		} else if field.typ.Kind() == reflect.Ptr {
 			t = field.typ.Elem()
+		} else {
+			t = field.typ
 		}
 	}
 	// Add the remaining.
@@ -116,7 +121,7 @@ func (c *cache) get(t reflect.Type) *structInfo {
 	return info
 }
 
-// creat creates a structInfo with meta-data about a struct.
+// create creates a structInfo with meta-data about a struct.
 func (c *cache) create(t reflect.Type, info *structInfo) *structInfo {
 	if info == nil {
 		info = &structInfo{fields: []*fieldInfo{}}
@@ -158,7 +163,7 @@ func (c *cache) createField(field reflect.StructField, info *structInfo) {
 		}
 	}
 	if isStruct = ft.Kind() == reflect.Struct; !isStruct {
-		if conv := c.conv[ft]; conv == nil {
+		if conv := c.conv[ft.Kind()]; conv == nil {
 			// Type is not supported.
 			return
 		}
@@ -170,6 +175,15 @@ func (c *cache) createField(field reflect.StructField, info *structInfo) {
 		ss:    isSlice && isStruct,
 		alias: alias,
 	})
+}
+
+// converter returns the converter for a type.
+func (c *cache) converter(t reflect.Type) Converter {
+	conv := c.regconv[t]
+	if conv == nil {
+		conv = c.conv[t.Kind()]
+	}
+	return conv
 }
 
 // ----------------------------------------------------------------------------
@@ -206,7 +220,7 @@ type pathPart struct {
 func fieldAlias(field reflect.StructField, tagName string) string {
 	var alias string
 	if tag := field.Tag.Get(tagName); tag != "" {
-		// For now tags only support the name but let's folow the
+		// For now tags only support the name but let's follow the
 		// comma convention from encoding/json and others.
 		if idx := strings.Index(tag, ","); idx == -1 {
 			alias = tag

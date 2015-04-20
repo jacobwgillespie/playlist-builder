@@ -5,7 +5,7 @@
 package schema
 
 import (
-	//"reflect"
+	"reflect"
 	"testing"
 )
 
@@ -24,6 +24,7 @@ type S1 struct {
 	F11 []*S1   `schema:"f11"`
 	F12 *[]S1   `schema:"f12"`
 	F13 *[]*S1  `schema:"f13"`
+	F14 int     `schema:"f14"`
 }
 
 type S2 struct {
@@ -49,6 +50,7 @@ func TestAll(t *testing.T) {
 		"f12.0.f12.1.f6": {"123", "124"},
 		"f13.0.f13.0.f6": {"131", "132"},
 		"f13.0.f13.1.f6": {"133", "134"},
+		"f14":            {},
 	}
 	f2 := 2
 	f41, f42 := 41, 42
@@ -109,6 +111,7 @@ func TestAll(t *testing.T) {
 				},
 			},
 		},
+		F14: 0,
 	}
 
 	s := &S1{}
@@ -286,6 +289,9 @@ func TestAll(t *testing.T) {
 				}
 			}
 		}
+	}
+	if s.F14 != e.F14 {
+		t.Errorf("f14: expected %v, got %v", e.F14, s.F14)
 	}
 }
 
@@ -1028,5 +1034,117 @@ func TestAllNT(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+type S12A struct {
+	ID []int
+}
+
+func TestCSVSlice(t *testing.T) {
+	data := map[string][]string{
+		"ID": {"0,1"},
+	}
+
+	s := S12A{}
+	NewDecoder().Decode(&s, data)
+	if len(s.ID) != 2 {
+		t.Errorf("Expected two values in the result list, got %+v", s.ID)
+	}
+	if s.ID[0] != 0 || s.ID[1] != 1 {
+		t.Errorf("Expected []{0, 1} got %+v", s)
+	}
+}
+
+type S12B struct {
+	ID []string
+}
+
+//Decode should not split on , into a slice for string only
+func TestCSVStringSlice(t *testing.T) {
+	data := map[string][]string{
+		"ID": {"0,1"},
+	}
+
+	s := S12B{}
+	NewDecoder().Decode(&s, data)
+	if len(s.ID) != 1 {
+		t.Errorf("Expected one value in the result list, got %+v", s.ID)
+	}
+	if s.ID[0] != "0,1" {
+		t.Errorf("Expected []{0, 1} got %+v", s)
+	}
+}
+
+//Invalid data provided by client should not panic (github issue 33)
+func TestInvalidDataProvidedByClient(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Panicked calling decoder.Decode: %v", r)
+		}
+	}()
+
+	type S struct {
+		f string
+	}
+
+	data := map[string][]string{
+		"f.f": {"v"},
+	}
+
+	err := NewDecoder().Decode(new(S), data)
+	if err == nil {
+		t.Errorf("invalid path in decoder.Decode should return an error.")
+	}
+}
+
+// underlying cause of error in issue 33
+func TestInvalidPathInCacheParsePath(t *testing.T) {
+	type S struct {
+		f string
+	}
+
+	typ := reflect.ValueOf(new(S)).Elem().Type()
+	c := newCache()
+	_, err := c.parsePath("f.f", typ)
+	if err == nil {
+		t.Errorf("invalid path in cache.parsePath should return an error.")
+	}
+}
+
+// issue 32
+func TestDecodeToTypedField(t *testing.T) {
+	type Aa bool
+	s1 := &struct{ Aa }{}
+	v1 := map[string][]string{"Aa": {"true"}}
+	NewDecoder().Decode(s1, v1)
+	if s1.Aa != Aa(true) {
+		t.Errorf("s1: expected %v, got %v", true, s1.Aa)
+	}
+}
+
+// issue 37
+func TestRegisterConverter(t *testing.T) {
+	type Aa int
+	type Bb int
+	s1 := &struct {
+		Aa
+		Bb
+	}{}
+	decoder := NewDecoder()
+
+	decoder.RegisterConverter(s1.Aa, func(s string) reflect.Value { return reflect.ValueOf(1) })
+	decoder.RegisterConverter(s1.Bb, func(s string) reflect.Value { return reflect.ValueOf(2) })
+
+	v1 := map[string][]string{"Aa": {"4"}, "Bb": {"5"}}
+	decoder.Decode(s1, v1)
+
+	if s1.Aa != Aa(1) {
+		t.Errorf("s1.Aa: expected %v, got %v", 1, s1.Aa)
+	}
+	if s1.Bb != Bb(2) {
+		t.Errorf("s1.Bb: expected %v, got %v", 2, s1.Bb)
 	}
 }

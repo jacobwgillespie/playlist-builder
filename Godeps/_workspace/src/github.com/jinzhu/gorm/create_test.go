@@ -10,20 +10,20 @@ func TestCreate(t *testing.T) {
 	float := 35.03554004971999
 	user := User{Name: "CreateUser", Age: 18, Birthday: time.Now(), UserNum: Num(111), PasswordHash: []byte{'f', 'a', 'k', '4'}, Latitude: float}
 
-	if !db.NewRecord(user) || !db.NewRecord(&user) {
+	if !DB.NewRecord(user) || !DB.NewRecord(&user) {
 		t.Error("User should be new record before create")
 	}
 
-	if count := db.Save(&user).RowsAffected; count != 1 {
+	if count := DB.Save(&user).RowsAffected; count != 1 {
 		t.Error("There should be one record be affected when create record")
 	}
 
-	if db.NewRecord(user) || db.NewRecord(&user) {
+	if DB.NewRecord(user) || DB.NewRecord(&user) {
 		t.Error("User should not new record after save")
 	}
 
 	var newUser User
-	db.First(&newUser, user.Id)
+	DB.First(&newUser, user.Id)
 
 	if !reflect.DeepEqual(newUser.PasswordHash, []byte{'f', 'a', 'k', '4'}) {
 		t.Errorf("User's PasswordHash should be saved ([]byte)")
@@ -49,30 +49,58 @@ func TestCreate(t *testing.T) {
 		t.Errorf("Should have created_at after create")
 	}
 
-	db.Model(user).Update("name", "create_user_new_name")
-	db.First(&user, user.Id)
+	DB.Model(user).Update("name", "create_user_new_name")
+	DB.First(&user, user.Id)
 	if user.CreatedAt != newUser.CreatedAt {
 		t.Errorf("CreatedAt should not be changed after update")
 	}
 }
 
-func TestCreateWithNoStdPrimaryKey(t *testing.T) {
+func TestCreateWithNoGORMPrimayKey(t *testing.T) {
+	jt := JoinTable{From: 1, To: 2}
+	err := DB.Create(&jt).Error
+	if err != nil {
+		t.Errorf("No error should happen when create a record without a GORM primary key. But in the database this primary key exists and is the union of 2 or more fields\n But got: %s", err)
+	}
+}
+
+func TestCreateWithNoStdPrimaryKeyAndDefaultValues(t *testing.T) {
 	animal := Animal{Name: "Ferdinand"}
-	if db.Save(&animal).Error != nil {
-		t.Errorf("No error should happen when create an record without std primary key")
+	if DB.Save(&animal).Error != nil {
+		t.Errorf("No error should happen when create a record without std primary key")
 	}
 
 	if animal.Counter == 0 {
 		t.Errorf("No std primary key should be filled value after create")
 	}
+
+	if animal.Name != "Ferdinand" {
+		t.Errorf("Default value should be overrided")
+	}
+
+	// Test create with default value not overrided
+	an := Animal{From: "nerdz"}
+
+	if DB.Save(&an).Error != nil {
+		t.Errorf("No error should happen when create an record without std primary key")
+	}
+
+	// We must fetch the value again, to have the default fields updated
+	// (We can't do this in the update statements, since sql default can be expressions
+	// And be different from the fields' type (eg. a time.Time fiels has a default value of "now()"
+	DB.Model(Animal{}).Where(&Animal{Counter: an.Counter}).First(&an)
+
+	if an.Name != "galeone" {
+		t.Errorf("Default value should fill the field. But got %v", an.Name)
+	}
 }
 
 func TestAnonymousScanner(t *testing.T) {
 	user := User{Name: "anonymous_scanner", Role: Role{Name: "admin"}}
-	db.Save(&user)
+	DB.Save(&user)
 
 	var user2 User
-	db.First(&user2, "name = ?", "anonymous_scanner")
+	DB.First(&user2, "name = ?", "anonymous_scanner")
 	if user2.Role.Name != "admin" {
 		t.Errorf("Should be able to get anonymous scanner")
 	}
@@ -84,12 +112,48 @@ func TestAnonymousScanner(t *testing.T) {
 
 func TestAnonymousField(t *testing.T) {
 	user := User{Name: "anonymous_field", Company: Company{Name: "company"}}
-	db.Save(&user)
+	DB.Save(&user)
 
 	var user2 User
-	db.First(&user2, "name = ?", "anonymous_field")
-	db.Model(&user2).Related(&user2.Company)
+	DB.First(&user2, "name = ?", "anonymous_field")
+	DB.Model(&user2).Related(&user2.Company)
 	if user2.Company.Name != "company" {
 		t.Errorf("Should be able to get anonymous field")
+	}
+}
+
+func TestSelectWithCreate(t *testing.T) {
+	user := getPreparedUser("select_user", "select_with_create")
+	DB.Select("Name", "BillingAddress", "CreditCard", "Company", "Emails").Create(user)
+
+	var queryuser User
+	DB.Preload("BillingAddress").Preload("ShippingAddress").
+		Preload("CreditCard").Preload("Emails").Preload("Company").First(&queryuser, user.Id)
+
+	if queryuser.Name != user.Name || queryuser.Age == user.Age {
+		t.Errorf("Should only create users with name column")
+	}
+
+	if queryuser.BillingAddressID.Int64 == 0 || queryuser.ShippingAddressId != 0 ||
+		queryuser.CreditCard.ID == 0 || len(queryuser.Emails) == 0 {
+		t.Errorf("Should only create selected relationships")
+	}
+}
+
+func TestOmitWithCreate(t *testing.T) {
+	user := getPreparedUser("omit_user", "omit_with_create")
+	DB.Omit("Name", "BillingAddress", "CreditCard", "Company", "Emails").Create(user)
+
+	var queryuser User
+	DB.Preload("BillingAddress").Preload("ShippingAddress").
+		Preload("CreditCard").Preload("Emails").Preload("Company").First(&queryuser, user.Id)
+
+	if queryuser.Name == user.Name || queryuser.Age != user.Age {
+		t.Errorf("Should only create users with age column")
+	}
+
+	if queryuser.BillingAddressID.Int64 != 0 || queryuser.ShippingAddressId == 0 ||
+		queryuser.CreditCard.ID != 0 || len(queryuser.Emails) != 0 {
+		t.Errorf("Should not create omited relationships")
 	}
 }

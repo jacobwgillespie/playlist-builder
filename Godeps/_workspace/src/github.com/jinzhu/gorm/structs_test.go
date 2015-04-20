@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 
 	"reflect"
 	"time"
@@ -19,23 +20,24 @@ type User struct {
 	UpdatedAt         time.Time     // UpdatedAt: Time of record is updated, will be updated automatically
 	Emails            []Email       // Embedded structs
 	BillingAddress    Address       // Embedded struct
-	BillingAddressId  sql.NullInt64 // Embedded struct's foreign key
+	BillingAddressID  sql.NullInt64 // Embedded struct's foreign key
 	ShippingAddress   Address       // Embedded struct
 	ShippingAddressId int64         // Embedded struct's foreign key
 	CreditCard        CreditCard
 	Latitude          float64
 	Languages         []Language `gorm:"many2many:user_languages;"`
-	CompanyId         int64
-	Company
+	CompanyID         int64
+	Company           Company
 	Role
 	PasswordHash      []byte
 	IgnoreMe          int64                 `sql:"-"`
 	IgnoreStringSlice []string              `sql:"-"`
 	Ignored           struct{ Name string } `sql:"-"`
+	IgnoredPointer    *User                 `sql:"-"`
 }
 
 type CreditCard struct {
-	Id        int8
+	ID        int8
 	Number    string
 	UserId    sql.NullInt64
 	CreatedAt time.Time
@@ -52,7 +54,7 @@ type Email struct {
 }
 
 type Address struct {
-	Id        int
+	ID        int
 	Address1  string
 	Address2  string
 	Post      string
@@ -62,8 +64,9 @@ type Address struct {
 }
 
 type Language struct {
-	Id   int
-	Name string
+	Id    int
+	Name  string
+	Users []User `gorm:"many2many:user_languages;"`
 }
 
 type Product struct {
@@ -84,8 +87,9 @@ type Product struct {
 }
 
 type Company struct {
-	Id   int64
-	Name string
+	Id    int64
+	Name  string
+	Owner *User `sql:"-"`
 }
 
 type Role struct {
@@ -93,7 +97,11 @@ type Role struct {
 }
 
 func (role *Role) Scan(value interface{}) error {
-	role.Name = string(value.([]uint8))
+	if b, ok := value.([]uint8); ok {
+		role.Name = string(b)
+	} else {
+		role.Name = value.(string)
+	}
 	return nil
 }
 
@@ -119,11 +127,19 @@ func (i *Num) Scan(src interface{}) error {
 }
 
 type Animal struct {
-	Counter   int64 `gorm:"primary_key:yes"`
-	Name      string
-	From      string //test reserved sql keyword as field name
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	Counter    uint64    `gorm:"primary_key:yes"`
+	Name       string    `sql:"DEFAULT:'galeone'"`
+	From       string    //test reserved sql keyword as field name
+	Age        time.Time `sql:"DEFAULT:current_timestamp"`
+	unexported string    // unexported value
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+type JoinTable struct {
+	From uint64
+	To   uint64
+	Time time.Time `sql:"default: null"`
 }
 
 type Post struct {
@@ -132,7 +148,7 @@ type Post struct {
 	MainCategoryId int64
 	Title          string
 	Body           string
-	Comments       []Comment
+	Comments       []*Comment
 	Category       Category
 	MainCategory   Category
 }
@@ -178,4 +194,26 @@ func (nt NullTime) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return nt.Time, nil
+}
+
+func getPreparedUser(name string, role string) *User {
+	var company Company
+	DB.Where(Company{Name: role}).FirstOrCreate(&company)
+
+	return &User{
+		Name:            name,
+		Age:             20,
+		Role:            Role{role},
+		BillingAddress:  Address{Address1: fmt.Sprintf("Billing Address %v", name)},
+		ShippingAddress: Address{Address1: fmt.Sprintf("Shipping Address %v", name)},
+		CreditCard:      CreditCard{Number: fmt.Sprintf("123456%v", name)},
+		Emails: []Email{
+			{Email: fmt.Sprintf("user_%v@example1.com", name)}, {Email: fmt.Sprintf("user_%v@example2.com", name)},
+		},
+		Company: company,
+		Languages: []Language{
+			{Name: fmt.Sprintf("lang_1_%v", name)},
+			{Name: fmt.Sprintf("lang_2_%v", name)},
+		},
+	}
 }
